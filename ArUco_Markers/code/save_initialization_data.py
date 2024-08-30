@@ -19,10 +19,10 @@ label_array = np.array([4, 5, 6, 7])
 orders = np.zeros(len(label_array)).astype(int)
 
 CURRENT_PATH = os.path.dirname(__file__)
-BASE_PATH    = os.path.dirname(CURRENT_PATH)
+BASE_PATH    = os.path.join(CURRENT_PATH,"calibration_data")
 
-cameraMatrix = np.load("code/calibration_data/realsense_camera_matrix.npy")
-distCoeffs = np.load("code/calibration_data/realsense_distCoeffs.npy")
+cameraMatrix = np.load(os.path.join(BASE_PATH, "realsense_camera_matrix.npy"))
+distCoeffs = np.load(os.path.join(BASE_PATH, "realsense_distCoeffs.npy"))
 
 # Setting for Detector parameters and dictionary
 detector_params = aruco.DetectorParameters()
@@ -99,7 +99,7 @@ try:
                 break
 finally:
     # Stop pipeline
-    np.save("code/calibration_data/pose_matrix.npy", X)
+    np.save(os.path.join(BASE_PATH, "pose_matrix.npy"), X)
     pipe.stop()
     cv2.destroyAllWindows()
     

@@ -50,7 +50,7 @@ past_bool_array = np.zeros(DATA_DEPTH)
 data_window = [np.zeros((0, len(RIGHT_BODY_INDEX) * 2))] * 3   
 body_position_past = np.zeros((len(RIGHT_BODY_INDEX), 3, 2))
 theta_array = []
-                                          
+
 # Open the model
 save_motion_scaler = pickle.load(open(os.path.join(SAVE_PATH, 'motion_scaler_30.sav'), 'rb'))
 save_motion_model  = pickle.load(open(os.path.join(SAVE_PATH, 'motion_model_30.sav'), 'rb'))

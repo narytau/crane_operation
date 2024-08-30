@@ -1,8 +1,11 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from create_vectors import calculate_point, calculate_relative_vectors, calculate_answer_vectors
 
-pose_initial_matrix = np.load("code/calibration_data/pose_matrix.npy")
+CURRENT_PATH = os.path.dirname(__file__)
+BASE_PATH    = os.path.join(CURRENT_PATH,"calibration_data")
+pose_initial_matrix = np.load(os.path.join(BASE_PATH,"pose_matrix.npy"))
 dataset = pose_initial_matrix
 
 
@@ -62,7 +65,7 @@ for coef in coefficients:
 coef_array = coef_array[1:, :]
 print(coef_array)
 
-np.save("code/calibration_data/coef_array.npy", coef_array)
+np.save(os.path.join(BASE_PATH, "coef_array.npy"), coef_array)
 
 """
 [[ 1.00593965 -0.98441679]

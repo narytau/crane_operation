@@ -233,7 +233,7 @@ if __name__ == "__main__":
     # data = np.concatenate((data[:,:,0], data[:,:,1], data[:,:,2]), axis=0)
     
 
-    np.savetxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass7.txt'), data)
+    np.savetxt(os.path.join(DATA_SAVE_PATH, 'motion_data_high8.txt'), data)
     
     
     plt.plot(np.arange(1, DATA_SIZE+1), data[:, -1])
