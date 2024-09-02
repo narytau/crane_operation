@@ -216,8 +216,8 @@ num_classes = len(MOTION_SPEED)
 
 # model = TransformerModel(input_size, num_classes)
 # model = RegularizedNN(input_size, num_classes, 60)
-model = ComplexNN(input_size, num_classes, 126, 75)
-# model = ComplexNN2(input_size, num_classes, 130, 80, 50)
+# model = ComplexNN(input_size, num_classes, 126, 75)
+model = ComplexNN2(input_size, num_classes, 130, 80, 50)
 
 
 criterion = nn.CrossEntropyLoss()
