@@ -13,6 +13,26 @@ from models.model.transformer import Transformer
 from ecg_dataset import myDataLoader
 
 
+class EarlyStopping:
+    def __init__(self, patience=5, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_loss = None
+        self.early_stop = False
+
+    def __call__(self, val_loss):
+        if self.best_loss is None:
+            self.best_loss = val_loss
+        elif val_loss < self.best_loss - self.min_delta:
+            self.best_loss = val_loss
+            self.counter = 0
+        else:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+
+
 def create_data_array(data, frame_num, skip_num, is_stop):
     data_new = data[::skip_num, :]
     data_new = data_new.reshape(-1, data_new.shape[1] * frame_num)
@@ -58,7 +78,7 @@ def calc_loss_and_score(pred, target, metrics):
     _,pred = torch.max(pred, dim=1)
     #print('predicted max = '+ str(pred ))
     #print('target = '+ str(target ))
-    metrics['correct']  += torch.sum(pred ==target ).item()
+    metrics['correct']  += torch.sum(pred ==target).item()
     #print('correct sum =  '+ str(torch.sum(pred==target ).item()))
     metrics['total']  += target.size(0) 
     #print('target size  =  '+ str(target.size(0)) )
@@ -83,8 +103,9 @@ def print_metrics(main_metrics_train,main_metrics_val,metrics, phase):
     return result 
 
 
-def train_model(dataloaders,model,optimizer, num_epochs=100): 
-
+def train_model(dataloaders,model,optimizer, num_epochs=100, patience=5): 
+    early_stopping = EarlyStopping(patience=patience, min_delta=0.001)
+    
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = 1e10
     train_dict= dict()
@@ -113,11 +134,12 @@ def train_model(dataloaders,model,optimizer, num_epochs=100):
             metrics['total']=0
 
             for inputs, labels in dataloaders[phase]:
+                # batch x frame x 1 x feature
                 inputs = inputs.to(device=device, dtype=torch.float)
                 labels = labels.to(device=device, dtype=torch.long)
                 # zero the parameter gradients
                 optimizer.zero_grad()
-# 
+
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
 
@@ -133,9 +155,16 @@ def train_model(dataloaders,model,optimizer, num_epochs=100):
             print(print_metrics(main_metrics_train=train_dict, main_metrics_val=val_dict,metrics=metrics,phase=phase ))
             epoch_loss = np.mean(metrics['loss'])
         
-            if phase == 'val' and epoch_loss < best_loss:
+            if phase == 'val':
+                early_stopping(epoch_loss)
+                if early_stopping.early_stop:
+                    print("Early stopping triggered. Stopping training.")
+                    model.load_state_dict(best_model_wts)
+                    return model
+                if epoch_loss < best_loss:
                     print("saving best model")
-                    best_loss = epoch_loss 
+                    best_loss = epoch_loss
+                    best_model_wts = copy.deepcopy(model.state_dict())
 
     print('Best val loss: {:4f}'.format(best_loss))
     
@@ -157,32 +186,70 @@ def create_data_array(data, frame_num, skip_num, is_stop):
 
 # Constants and Paths
 CURRENT_PATH = os.path.dirname(__file__)
+BASE_PATH = os.path.dirname(CURRENT_PATH)
+DATA_SAVE_PATH = os.path.join(BASE_PATH, "data_4class")
 
 # HIGH, MIDDLE, LOW, STOP
-MOTION_SPEED = [0, 1, 2]
+MOTION_SPEED = [0, 1, 2, 3]
 frame_num = 30
 feature = 6
 
-# データを準備
-scaler = StandardScaler()
-data = np.loadtxt(os.path.join(CURRENT_PATH, "motion_data_original7.txt"))
+# Data preparation
+data_array = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_original10.txt'))
+data_unclass1 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass10.txt'))
+data_unclass2 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass11.txt'))
+data_unclass3 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass12.txt'))
+# data_unclass = np.vstack((data_unclass1.reshape(-1, data_unclass1.shape[1]*frame_num),
+#                         data_unclass2.reshape(-1, data_unclass2.shape[1]*frame_num),
+#                         data_unclass3.reshape(-1, data_unclass3.shape[1]*frame_num)))
+
+data_unclass = np.vstack((data_unclass1, data_unclass2, data_unclass3))
+
+print(data_array.shape, data_unclass1.shape)
 # data_array = create_data_array(data, frame_num=frame_num, skip_num=1, is_stop=True)
-data = scaler.fit_transform(data)
+# data = scaler.fit_transform(data)
 
-data_size = int(data.shape[0]/frame_num)
-data_array = np.zeros((data_size, frame_num, feature))
+random_integers = [random.randint(0, data_array.shape[0]-1)  for _ in range(int(data_array.shape[0] / 3 / frame_num))]
+random_integers = [i for i in random_integers for _ in range(frame_num)]
+
+data_stop = data_array[random_integers, :]
+
+data_array_new = np.vstack((data_array, data_stop))
+data_array_new[-data_unclass.shape[0]:, :] = data_unclass
+
+gauss_matrix = np.random.randn(data_array_new.shape[0], data_array_new.shape[1]) / 500
+data_array_new += gauss_matrix
+# data_array_new = data_array_new[::2, :]
+
+
+
+data_size = int(data_array_new.shape[0]/frame_num)
+data_array_for_train = np.zeros((data_size, frame_num, feature))
 for i in range(data_size):
-    data_array[i,:,:] = data[frame_num*i:frame_num*(i+1)]
+    data_array_for_train[i,:,:] = data_array_new[frame_num*i:frame_num*(i+1)]
 
-labels = np.array([speed for speed in MOTION_SPEED for _ in range(int(data_array.shape[0] / len(MOTION_SPEED)))])
 
-X_train, X_test, y_train, y_test = train_test_split(data_array, labels, test_size=0.15, random_state=42)
+# scaler
+data_reshaped = data_array_for_train.reshape(-1, data_array_for_train.shape[2])
+
+scaler = StandardScaler()
+scaler.fit(data_reshaped)
+
+data_standardized = scaler.transform(data_reshaped)
+data_standardized = data_standardized.reshape(data_array_for_train.shape[0], data_array_for_train.shape[1], data_array_for_train.shape[2])
+
+pickle.dump(scaler, open(os.path.join(DATA_SAVE_PATH, 'motion_scaler_transformer.sav'), 'wb'))
+
+
+labels = np.array([speed for speed in MOTION_SPEED for _ in range(int(data_standardized.shape[0] / len(MOTION_SPEED)))])
+
+X_train, X_test, y_train, y_test = train_test_split(data_standardized, labels, test_size=0.15, random_state=42)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 sequence_len = frame_num # sequence length of time series
 max_len = 1000 # max time series sequence length 
 n_head = 4 # number of attention head
-n_layer = 2 # number of encoder layer
+n_layer = 3 # number of encoder layer
 drop_prob = 0.1
 d_model = 128 # number of dimension (for positional embedding)
 ffn_hidden = 512 # size of hidden layer before classification 
@@ -193,6 +260,6 @@ model = Transformer(d_model=d_model, n_head=n_head, max_len=max_len, seq_len=seq
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 dataloaders = myDataLoader(batch_size=batch_size, x_train=X_train, x_val=X_test, y_train=y_train, y_val=y_test).getDataLoader()
 
-model_normal_ce = train_model(dataloaders=dataloaders, model=model, optimizer=optimizer, num_epochs=20)
+model_normal_ce = train_model(dataloaders=dataloaders, model=model, optimizer=optimizer, num_epochs=30)
 torch.save(model.state_dict(), 'myModel')
 

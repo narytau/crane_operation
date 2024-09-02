@@ -32,7 +32,7 @@ CENTER_BODY_INDEX = [11, 12, 23, 24]
 
 # Data Collection Constants
 WINDOW_SIZE = 100
-DATA_SIZE = 3000
+DATA_SIZE = 9000
 
 MOTION_SPEED = [0]
 SIGMA_ARRAY = [1, 1, 10]
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     # data = np.concatenate((data[:,:,0], data[:,:,1], data[:,:,2]), axis=0)
     
 
-    np.savetxt(os.path.join(DATA_SAVE_PATH, 'motion_data_high8.txt'), data)
+    np.savetxt(os.path.join(DATA_SAVE_PATH, 'motion_data_middle_new5.txt'), data)
     
     
     plt.plot(np.arange(1, DATA_SIZE+1), data[:, -1])

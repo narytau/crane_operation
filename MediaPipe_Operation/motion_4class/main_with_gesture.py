@@ -116,7 +116,7 @@ class RotateDetectionwithGesture(BaseMotionRecognition):
                 handlandmarker.recognize_async(mp_image, self.frame_time_stamp)
 
                 processed = super().process_frame_main(mp_image, landmarker)
-
+                
                 
                 # # Prepare for using model
                 # theta_scaled = self.theta_scaler.transform(self.theta_scaler)
@@ -170,10 +170,10 @@ CURRENT_PATH = os.path.dirname(__file__)
 BASE_PATH    = os.path.dirname(CURRENT_PATH)
 TASK_PATH = os.path.join(BASE_PATH, "recognizer", "pose_landmarker_full.task")
 HAND_TASK_PATH = os.path.join(BASE_PATH, "recognizer", "gesture_recognizer.task")
-MODEL_PATH = os.path.join(BASE_PATH, "theta_data")
+MODEL_PATH = os.path.join(BASE_PATH, "motion_previous_model", "theta_data")
 SAVE_PATH = os.path.join(BASE_PATH, "model_4class")
 
-frame_num = 50
+frame_num = 30
 
 rotate_detection_with_gesture = RotateDetectionwithGesture(data_depth=frame_num)
 rotate_detection_with_gesture.set_task_path(TASK_PATH)
@@ -201,7 +201,8 @@ rotate_detection_with_gesture.set_motion_model(motion_scaler=motion_scaler, mode
 
 
 # BEST 4 classes NN (6 or 9) 6: frame 25, skip 1 || 10: frame 30, skip 1 
-motion_scaler = pickle.load(open(os.path.join(SAVE_PATH, 'motion_scaler10.sav'), 'rb'))
+# motion_scaler = pickle.load(open(os.path.join(SAVE_PATH, 'motion_scaler11.sav'), 'rb'))
+motion_scaler = pickle.load(open(os.path.join(SAVE_PATH, 'motion_scaler_with_unclass_data2.sav'), 'rb'))
 input_size = 6 * frame_num  # 入力ベクトルの長さ
 num_classes = 4             # クラスの数
 # model_NN = RegularizedNN(input_size, num_classes)
@@ -209,7 +210,8 @@ num_classes = 4             # クラスの数
 model_NN = ComplexNN(input_size, num_classes, num1=126, num2=75)
 # model_NN = ComplexNN2(input_size, num_classes, 130, 80, 50)
 
-model_NN.load_state_dict(torch.load(os.path.join(SAVE_PATH, 'gesture_classifier_with_unclass.pth')))
+# model_NN.load_state_dict(torch.load(os.path.join(SAVE_PATH, 'gesture_classifier11.pth')))
+model_NN.load_state_dict(torch.load(os.path.join(SAVE_PATH, 'gesture_classifier_with_unclass_data2.pth')))
 model_NN.eval()
 rotate_detection_with_gesture.set_motion_model(motion_scaler=motion_scaler, model_NN=model_NN)
 

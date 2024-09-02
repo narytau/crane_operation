@@ -1,6 +1,7 @@
 import os
 import torch
 import pickle
+import random
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
@@ -13,7 +14,39 @@ from sklearn.metrics import classification_report, accuracy_score
 import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 
-from class_NN import RegularizedNN, ComplexNN, TransformerModel
+from class_NN import RegularizedNN, ComplexNN, TransformerModel, ComplexNN2
+
+def apply_augmentations(data):
+    # Example augmentation: Time warp
+    time_warp_ratio = 0.05
+    warp_factor = np.random.uniform(1 - time_warp_ratio, 1 + time_warp_ratio, data.shape[0])
+    print(warp_factor)
+    for i in range(data.shape[0]):
+        data[i] = data[i] * warp_factor[i]
+        
+    # Add Gaussian noise
+    gauss_matrix = np.random.randn(data.shape[0], data.shape[1]) / 1000
+    data += gauss_matrix
+    return data
+        
+def create_data_array(data, frame_num, skip_num, is_stop):
+    data_new = data[::skip_num, :]
+    data_new = data_new.reshape(-1, data_new.shape[1] * frame_num)
+
+    
+    if is_stop:
+        random_integers = [random.randint(0, data.shape[0]-1) for _ in range(int(data_new.shape[0] / 3))]
+        data_stop = data[random_integers, :]
+        data_stop = np.hstack([data_stop] * frame_num)
+        gauss_matrix = np.random.randn(data_stop.shape[0], data_stop.shape[1]) / 500
+        data_stop += gauss_matrix
+        
+        data_new = np.vstack((data_new, data_stop))
+
+    data_new = apply_augmentations(data_new)
+
+    return data_new 
+
 
 # Constants and Paths
 CURRENT_PATH = os.path.dirname(__file__)
@@ -21,23 +54,37 @@ BASE_PATH = os.path.dirname(CURRENT_PATH)
 SAVE_PATH = os.path.join(BASE_PATH, "model_4class")
 DATA_SAVE_PATH = os.path.join(BASE_PATH, "data_4class")
 
-MODEL_SAVE_PATH = os.path.join(SAVE_PATH, "gesture_classifier6.pth")
+MODEL_SAVE_PATH = os.path.join(SAVE_PATH, "gesture_classifier_with_unclass_data2.pth")
 
 MOTION_SPEED = [0, 1, 2, 3]
-is_saved = False
-frame_num = 25
-
-scaler = pickle.load(open(os.path.join(SAVE_PATH, 'motion_scaler6.sav'), 'rb'))
+is_saved = True
+frame_num = 30
 
 # Data preparation
-data_array = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data6.txt'))
+data_array = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_original7.txt'))
+data_unclass1 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass1.txt'))
+data_unclass2 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass2.txt'))
+data_unclass3 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass3.txt'))
+data_unclass4 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass4.txt'))
+data_unclass5 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass5.txt'))
+data_unclass6 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass6.txt'))
+data_unclass7 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass7.txt'))
+data_unclass = np.vstack((data_unclass5.reshape(-1, data_unclass5.shape[1]*frame_num),
+                        data_unclass6.reshape(-1, data_unclass6.shape[1]*frame_num),
+                        data_unclass7.reshape(-1, data_unclass7.shape[1]*frame_num)))
 
-print(data_array.shape)
+
+data_array = create_data_array(data_array, frame_num=frame_num, skip_num=1, is_stop=True)
+print(data_unclass.shape, data_array.shape)
+# data_array[-data_unclass.shape[0]:, :] = data_unclass
 
 # データの標準化
+scaler = StandardScaler()
 data_array = scaler.fit_transform(data_array)
 
-EACH_DATA = 800
+pickle.dump(scaler, open(os.path.join(SAVE_PATH, 'motion_scaler_with_unclass_data2.sav'), 'wb'))
+
+
 label_array = np.array([speed for speed in MOTION_SPEED for _ in range(int(data_array.shape[0] / len(MOTION_SPEED)))])
 # label_array = np.hstack(([0]*EACH_DATA, [1]*EACH_DATA, [2]*2*EACH_DATA, [3]*2*EACH_DATA))
 
@@ -54,16 +101,17 @@ input_size = 6 * frame_num
 num_classes = len(MOTION_SPEED)
 
 
-
 ######################################################
-# layer = [10*_ for _ in range(1,9)]
+# layer = [10*_ for _ in range(1,15)]
 # drop = [_*0.1 for _ in range(1,10)]
 # avg = []
-# for i in range(75,85):
-#     for j in range(35,45):
+# for i in range(len(layer)):
+#     for j in range(i):
 #         # for k in range(j):
         
-#         num1, num2= i,j
+#         # num1, num2= i,j
+#         num1, num2= layer[i], layer[j]
+
 #         print(num1, num2)
 #         # model = TransformerModel(input_size, num_classes)
 #         # model = RegularizedNN(input_size, num_classes, num1)
@@ -142,9 +190,12 @@ num_classes = len(MOTION_SPEED)
 # print(max(avg))
 
 ##########################################################################
+
 # model = TransformerModel(input_size, num_classes)
 # model = RegularizedNN(input_size, num_classes, 60)
-model = ComplexNN(input_size, num_classes, 76, 43)
+model = ComplexNN(input_size, num_classes, 126, 75)
+# model = ComplexNN2(input_size, num_classes, 130, 80, 50)
+
 
 
 criterion = nn.CrossEntropyLoss()
@@ -210,10 +261,6 @@ for epoch in range(num_epochs):
         print("Early stopping")
         break
 
-print("Val accuracy average:")
-print(sum(val_array[-10:]) / len(val_array[-10:]))
-
-
 # Save the final model
 if is_saved:
     if best_model is not None:
@@ -235,4 +282,5 @@ with torch.no_grad():
 # Calculate precision, recall, F1-score, and support
 report = classification_report(all_labels, all_predictions, target_names=[str(cls) for cls in MOTION_SPEED])
 print(report)
+print("accuracy_score")
 print(accuracy_score(all_labels, all_predictions))
