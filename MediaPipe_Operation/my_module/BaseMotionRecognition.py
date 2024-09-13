@@ -72,7 +72,6 @@ def process_theta_array(body_position_array, pose_landmarks, RIGHT_BODY_INDEX, L
     # The direction crane should move (Right hand)
     direction = calculate_unit_vector(vector_array[0, :, 0])
     
-    print(vector_array[0, :, 0])
     return theta_array, direction
 
 def predict_motion_NN(motion_array, model, scaler):
@@ -112,11 +111,10 @@ def predict_motion_transformer(motion_array, model, scaler, device):
     motion_array_tensor = np.zeros((1, motion_array.shape[0], 1, motion_array.shape[1]))
     motion_array_tensor[0, :, 0, :] = scaled_motion_array
     motion_array_tensor = torch.tensor(motion_array_tensor, dtype=torch.float32).to(device) # (1, frame_num, feature)
-
     with torch.no_grad():
         output = model(motion_array_tensor)
-        
-    motion_prob = F.softmax(output.squeeze(), dim=-1).numpy()
+    
+    motion_prob = F.softmax(output.squeeze(), dim=-1).numpy()[:4]
     motion_pred = process_predcition(motion_prob)
     return motion_pred, motion_prob
     

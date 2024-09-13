@@ -65,7 +65,7 @@ for coef in coefficients:
 coef_array = coef_array[1:, :]
 print(coef_array)
 
-np.save(os.path.join(BASE_PATH, "coef_array.npy"), coef_array)
+np.save(os.path.join(BASE_PATH, "coef_array_5.npy"), coef_array)
 
 """
 [[ 1.00593965 -0.98441679]

@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader, Dataset
 from transformers import BertModel, BertConfig
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from models.model.transformer import Transformer 
+from models.model.transformer import Transformer
 from ecg_dataset import myDataLoader
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from my_module.sliding_time_window import sliding_time_window

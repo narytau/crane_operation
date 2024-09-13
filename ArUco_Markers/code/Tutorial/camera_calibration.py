@@ -1,6 +1,7 @@
 import numpy as np
 import cv2 as cv
 import glob
+import os
 
 # termination criteria
 criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -41,7 +42,12 @@ cv.destroyAllWindows()
 ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
 print(mtx, dist, rvecs, tvecs)
-np.save("code/calibration_data/realsense_camera_matrix", mtx)
-np.save("code/calibration_data/realsense_distCoeffs", dist)
-np.save("code/calibration_data/realsense_rvecs", rvecs)
-np.save("code/calibration_data/realsense_tvecs", tvecs)
+
+CURRENT_PATH = os.path.dirname(__file__)
+BASE_PATH    = os.path.dirname(CURRENT_PATH)
+
+
+np.save(os.path.join(BASE_PATH, "calibration_data", "realsense_camera_matrix"), mtx)
+np.save(os.path.join(BASE_PATH, "calibration_data", "realsense_distCoeffs"), dist)
+np.save(os.path.join(BASE_PATH, "calibration_data", "realsense_rvecs"), rvecs)
+np.save(os.path.join(BASE_PATH, "calibration_data", "realsense_tvecs"), tvecs)

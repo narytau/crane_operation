@@ -10,12 +10,12 @@ from sklearn.metrics import mean_squared_error
 
 # Mapping
 def map_values(x):
-    mapping = {6: 0, 5: 1, 4: 2, 7: 3}
+    mapping = {6: 0, 5: 1, 4: 2, 7: 3, 8:4}
     return mapping.get(x, x) 
 vectorized_map_values = np.vectorize(map_values)
 
 # Tag label that we use
-label_array = np.array([4, 5, 6, 7])
+label_array = np.array([4, 5, 6, 7, 8])
 orders = np.zeros(len(label_array)).astype(int)
 
 CURRENT_PATH = os.path.dirname(__file__)
@@ -99,7 +99,7 @@ try:
                 break
 finally:
     # Stop pipeline
-    np.save(os.path.join(BASE_PATH, "pose_matrix.npy"), X)
+    np.save(os.path.join(BASE_PATH, "pose_matrix_5.npy"), X)
     pipe.stop()
     cv2.destroyAllWindows()
     

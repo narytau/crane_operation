@@ -18,13 +18,14 @@ label_array = np.array([4, 5, 6, 7])
 orders = np.zeros(len(label_array)).astype(int)
 
 CURRENT_PATH = os.path.dirname(__file__)
-BASE_PATH    = os.path.dirname(CURRENT_PATH)
+BASE_PATH    = os.path.join(CURRENT_PATH,"calibration_data")
 
-cameraMatrix = np.load("code/calibration_data/realsense_camera_matrix.npy")
-distCoeffs = np.load("code/calibration_data/realsense_distCoeffs.npy")
-relative_matrix = np.load("code/calibration_data/relative_matrix.npy")
-distance_matrix = np.load("code/calibration_data/distance_matrix.npy")
-vector_coef = np.load("code/calibration_data/vector_coef.npy")
+# load data
+cameraMatrix = np.load(os.path.join(BASE_PATH, "realsense_camera_matrix.npy"))
+distCoeffs   = np.load(os.path.join(BASE_PATH, "realsense_distCoeffs.npy"))
+relative_matrix = np.load(os.path.join(BASE_PATH, "relative_matrix.npy"))
+distance_matrix = np.load(os.path.join(BASE_PATH, "distance_matrix.npy"))
+coef_array = np.load(os.path.join(BASE_PATH, "coef_array.npy"))
 
 # Setting for Detector parameters and dictionary
 detector_params = aruco.DetectorParameters()

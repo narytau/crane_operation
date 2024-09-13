@@ -4,7 +4,6 @@ import sys
 import torch
 import copy
 from torch import nn,optim 
-from torchinfo import summary 
 from models.model.transformer import Transformer 
 from ecg_dataset import myDataLoader
 import numpy as np
@@ -15,8 +14,6 @@ import pyrealsense2 as rs
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from my_module.BaseMotionRecognition import BaseMotionRecognition
 
-
-
 def find_most_frequent_element(arr):
     unique_elements, counts = np.unique(arr, return_counts=True)
     max_count = np.max(counts)
@@ -26,32 +23,6 @@ def find_most_frequent_element(arr):
     for elem in arr:
         if elem in max_elements:
             return elem
-        
-def update_judge(pred, judge):
-    if not pred:
-        return None  
-
-    # 初期のjudgeを設定
-    judge = pred[0]
-
-    # 状態を追跡するための変数
-    counter = [0, 0, 0, 0]  # 0から3の数の出現回数を記録
-
-    # predの値を順に処理
-    for i in range(1, len(pred)):
-        current = pred[i]
-
-        # judgeとは異なる数のカウントを増やす
-        if current != judge:
-            counter[current] += 1
-
-            # 異なる数が6回中4回以上現れた場合、judgeを更新
-            if counter[current] >= 4:
-                judge = current
-                counter = [0, 0, 0, 0]  # カウンターをリセット
-                counter[judge] = 1      # 新しいjudgeのカウントを初期化
-
-    return judge
 
 def num_to_class(num):
     if num == 0:
@@ -66,6 +37,13 @@ def num_to_class(num):
         pred = 'Error'
     return pred        
         
+def predicition_handler(arr, pred):
+    if np.all(arr == 3):
+        pred = 'Unclassified'
+    if arr[0] == 3 and np.all(arr == 3) is False:
+        pred = num_to_class(arr[1])
+    return pred
+        
 class RotateDetectionwithGesture(BaseMotionRecognition):
     # Import classes of MediaPipe
     BaseOptions = mp.tasks.BaseOptions
@@ -77,7 +55,7 @@ class RotateDetectionwithGesture(BaseMotionRecognition):
     
     def __init__(self, data_depth, filter_size=None):
         super().__init__(data_depth, filter_size)
-        self.pred_array = (np.ones(5) * 3).astype(int)
+        self.pred_array = (np.ones(10) * 3).astype(int)
         self.handedness = None
         self.handgestures = None
 
@@ -85,7 +63,7 @@ class RotateDetectionwithGesture(BaseMotionRecognition):
     def decide_pred(self):
         self.pred_array = np.roll(self.pred_array, 1)
         self.pred_array[0] = np.argmax(self.motion_prob)
-        self.motion_pred_with_array = find_most_frequent_element(self.pred_array)
+        self.handled_pred = predicition_handler(self.pred_array, self.motion_pred)
         
     # Create a gesture recognizer instance with the live stream mode:
     def print_hand_result(self, result: GestureRecognizerResult, output_image: mp.Image, timestamp_ms: int):
@@ -154,13 +132,14 @@ class RotateDetectionwithGesture(BaseMotionRecognition):
                     cv2.putText(flip_color_image, str(np.round(self.direction, 2)), (350, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                     
                     self.decide_pred()
+                    print("a",self.handled_pred)
+                    cv2.putText(flip_color_image, self.handled_pred, (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                     # print(self.motion_pred_with_array)
 
                 elif is_started and processed and self.theta_array[1, -1] <= -30:
                     self.motion_pred = 'Unclassified'
                     super().display_data(flip_color_image, self.motion_pred)
                     
-                cv2.putText(flip_color_image, num_to_class(self.last_pred), (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                 
                 cv2.imshow('RGB Image', flip_color_image)
 

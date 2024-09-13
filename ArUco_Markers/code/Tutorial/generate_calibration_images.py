@@ -17,7 +17,7 @@ if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
 # カウンターの初期化
-counter = 19
+counter = 1
 
 print("Press 'Tab' to capture a photo. Press 'q' to exit.")
 
