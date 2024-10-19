@@ -225,6 +225,16 @@ model_NN.eval()
 rotate_detection_with_gesture.set_motion_model(motion_scaler=motion_scaler, model_NN=model_NN)
 
 
+""" new SVM with slide
+motion_scaler_slide = pickle.load(open(os.path.join(SAVE_PATH, 'motion_scaler_SVM_slide.sav'), 'rb'))
+input_size = 6 * frame_num
+num_classes = 4
+
+model_SVM_slide = pickle.load(open(os.path.join(SAVE_PATH, 'model_SVM_slide.sav'), 'rb'))
+rotate_detection_with_gesture.set_motion_model(motion_scaler=motion_scaler_slide, model_SVM=model_SVM_slide)
+"""
+
+
 """
 motion_scaler = pickle.load(open(os.path.join(SAVE_PATH, 'motion_scaler7.sav'), 'rb'))
 input_size = 6 * frame_num  # 入力ベクトルの長さ

@@ -38,19 +38,19 @@ def arange_position_init(position):
         position_init[i+2, :] =  relative_array[i, 1] * rotation_matrix @ position_init[1, :] 
 
     # Regularization for inverse matrix computation
-    position_init[:, -1] = 1e-10
+    position_init[:, -1] = 1e-30
 
     return position_init
 
 
 # Mapping
 def map_values(x):
-    mapping = {6: 0, 5: 1, 4: 2, 7: 3}
+    mapping = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
     return mapping.get(x, x) 
 vectorized_map_values = np.vectorize(map_values)
 
 # Tag label that we use
-label_array = np.array([4, 5, 6, 7])
+label_array = np.array([1, 2, 3, 4, 5, 6])
 orders = np.zeros(len(label_array)).astype(int)
 N = len(label_array)
 
@@ -58,18 +58,17 @@ CURRENT_PATH = os.path.dirname(__file__)
 BASE_PATH    = os.path.join(CURRENT_PATH, "calibration_data")
 
 # load data
-cameraMatrix = np.load(os.path.join(BASE_PATH, "realsense_camera_matrix.npy"))
-distCoeffs   = np.load(os.path.join(BASE_PATH, "realsense_distCoeffs.npy"))
-relative_matrix = np.load(os.path.join(BASE_PATH, "relative_matrix.npy"))
-distance_matrix = np.load(os.path.join(BASE_PATH, "distance_matrix.npy"))
-coef_array = np.load(os.path.join(BASE_PATH, "coef_array.npy"))
+cameraMatrix = np.load(os.path.join(BASE_PATH, "realsense_camera_matrix_iphone.npy"))
+distCoeffs   = np.load(os.path.join(BASE_PATH, "realsense_distCoeffs_iphone.npy"))
 
 # Setting for Detector parameters and dictionary
 detector_params = aruco.DetectorParameters()
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 aruco_detector = cv2.aruco.ArucoDetector(aruco_dict, detector_params)
 
-aruco_marker_side_length = 0.0575
+# aruco_marker_side_length = 0.0575
+aruco_marker_side_length = 0.098
+
 objPoints = np.array([[-aruco_marker_side_length/2, aruco_marker_side_length/2, 0],
                     [ aruco_marker_side_length/2,  aruco_marker_side_length/2, 0],
                     [ aruco_marker_side_length/2, -aruco_marker_side_length/2, 0],
@@ -80,26 +79,24 @@ target_point = np.array([3, 3, 0])
 
 flag_init = False
 
-# Setting for realsense
-pipe = rs.pipeline()
-cfg = rs.config()
-cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-pipe.start(cfg)
+
 
 try:
     print("Initializing...")
     print("Ensure all markers are visible on the screen, then press the Tab key to retrieve the data.")
     print("-------------------------------------------------------------------------------------------")
+    
+    cap = cv2.VideoCapture(os.path.join(BASE_PATH, "video2.MOV"))
+    
+    
     while True:
+            ret, frame = cap.read()
             rvec_array = []
             tvec_array = np.zeros((N, 3))
             
             # Wait for frames and get color frame
-            frames = pipe.wait_for_frames()
-            color_frame = frames.get_color_frame()
             
-            # Convert RGB into numpy array (480x640x3)
-            color_image = np.asanyarray(color_frame.get_data())
+            color_image = cv2.resize(frame, (640, 480))
             image_shape = color_image.shape
 
             # Detect ArUCo tag
@@ -126,10 +123,13 @@ try:
                 
                 if flag_init == False:
                     key = cv2.waitKey(1) & 0xFF
-                    if detected_num == N and key == 9:
-                        position_init = arange_position_init(tvec_array)
-                        flag_init = True
-                        print("Initial position is successfully taken")
+                    position_init = np.zeros((N, 3))
+                    for i in range(20):
+                        if detected_num == N:
+                            position_init += arange_position_init(tvec_array)
+                    flag_init = True
+                    position_init = position_init / 20
+                    print("Initial position is successfully taken")
                 else:
                     if detected_num >= 3:
                         p = tvec_array[remaining_index, :]
@@ -147,7 +147,8 @@ try:
                         R = U @ Vh
                         T = mu_p.reshape(3,1) - R @ mu_q.reshape(3,1)
                         
-                        cv2.drawFrameAxes(color_image, cameraMatrix=cameraMatrix, distCoeffs=distCoeffs, rvec=R, tvec=T, length=0.05)
+                        # cv2.drawFrameAxes(color_image, cameraMatrix=cameraMatrix, distCoeffs=distCoeffs, rvec=R, tvec=T, length=0.3)
+                        cv2.drawFrameAxes(color_image, cameraMatrix=cameraMatrix, distCoeffs=distCoeffs, rvec=R, tvec=tvec_array[0,:], length=0.3)
                         
                         tvec_hole = R @ np.array([[0.1], [0.05], [-0.05]]) + T
                         cv2.drawFrameAxes(color_image, cameraMatrix=cameraMatrix, distCoeffs=distCoeffs, rvec=R, tvec=tvec_hole, length=0.005)
@@ -166,6 +167,5 @@ try:
                 break
 finally:
     # Stop pipeline
-    pipe.stop()
     cv2.destroyAllWindows()
 

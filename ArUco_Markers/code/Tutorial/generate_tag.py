@@ -7,7 +7,7 @@ from cv2 import aruco
 dict_aruco = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 
 # determine ID (適当な整数)
-marker_id = 8
+marker_id = 10
 
 # marker size
 size_mark = 100

@@ -127,7 +127,7 @@ def detect_stop_motion_SVM(motion_array, model, scaler):
 
     # motion_pred = model.predict(scaled_flatten_motion_array)
     motion_prob = model.predict_proba(scaled_flatten_motion_array)
-    print(motion_prob)
+
     if motion_prob[0][0] > 0.8:
         stop_signal = True    
     return stop_signal
@@ -386,13 +386,13 @@ class BaseMotionRecognition():
                                                         scaler=self.motion_scaler,
                                                         device=self.device)            
             
-            print("before")
-            print(self.pred_array2)
+            # print("before")
+            # print(self.pred_array2)
             self.pred_array2 = np.roll(self.pred_array2, -1)
             self.pred_array2[-1] = np.argmax(self.motion_prob)
             
             # when all elements are same and they are different from last pred
-            print(self.pred_array2)
+            # print(self.pred_array2)
             
             if len(np.unique(self.pred_array2)) == 1 and self.last_pred != self.pred_array2[0]:
                 if self.pred_array2[0] != 3:

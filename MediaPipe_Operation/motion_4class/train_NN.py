@@ -55,7 +55,7 @@ SAVE_PATH = os.path.join(BASE_PATH, "model_4class")
 DATA_SAVE_PATH = os.path.join(BASE_PATH, "data_4class")
 
 MODEL_SAVE_PATH = os.path.join(SAVE_PATH, "gesture_classifier_with_unclass_data2.pth")
-
+print(MODEL_SAVE_PATH)
 MOTION_SPEED = [0, 1, 2, 3]
 is_saved = True
 frame_num = 30
@@ -192,9 +192,10 @@ num_classes = len(MOTION_SPEED)
 ##########################################################################
 
 # model = TransformerModel(input_size, num_classes)
-# model = RegularizedNN(input_size, num_classes, 60)
+# model = RegularizedNN(input_size, num_classes, 50)
 model = ComplexNN(input_size, num_classes, 126, 75)
-# model = ComplexNN2(input_size, num_classes, 130, 80, 50)
+# model = ComplexNN(input_size, num_classes, 120, 70)
+
 
 
 

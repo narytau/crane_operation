@@ -61,7 +61,6 @@ data_unclass3 = np.loadtxt(os.path.join(DATA_SAVE_PATH, 'motion_data_unclass12.t
 
 data_unclass = np.vstack((data_unclass2, data_unclass3))
 
-
 random_integers = [random.randint(0, data_array.shape[0]-1)  for _ in range(int(data_array.shape[0] / 3 / frame_num))]
 random_integers = [i for i in random_integers for _ in range(frame_num)]
 
@@ -93,7 +92,8 @@ data_window_array = np.reshape(np.transpose(data_window_array, (0,2,1)),
 
 # Standard scaler
 scaler = StandardScaler()
-data_array = scaler.fit_transform(data_array)
+print(data_window_array.shape)
+data_window_array = scaler.fit_transform(data_window_array)
 
 pickle.dump(scaler, open(os.path.join(SAVE_PATH, 'motion_scaler_SVM_slide.sav'), 'wb'))
 
@@ -101,7 +101,7 @@ pickle.dump(scaler, open(os.path.join(SAVE_PATH, 'motion_scaler_SVM_slide.sav'),
 label_array = np.array([speed for speed in MOTION_SPEED for _ in range(int(data_window_array.shape[0] / len(MOTION_SPEED)))])
 
 X_train, X_test, y_train, y_test = train_test_split(data_window_array, label_array, train_size=0.75, random_state=42)
-param_grid = {'C': [0.01, 0.1, 1, 10], 'gamma': [0.01, 0.1, 1, 10]}
+param_grid = {'C': [1,10,100], 'gamma': [0.01,0.1,1]}
 grid_search = GridSearchCV(SVC(probability=True), param_grid, cv=5)
 grid_search.fit(X_train, y_train)
 

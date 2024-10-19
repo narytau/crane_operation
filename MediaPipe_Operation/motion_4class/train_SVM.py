@@ -71,19 +71,21 @@ label_array = np.array([speed for speed in MOTION_SPEED for _ in range(int(data_
 
 X_train, X_test, y_train, y_test = train_test_split(data_array, label_array, train_size=0.75, random_state=42)
 
-param_grid = {'C': [0.01, 0.1, 1], 'gamma': [0.01, 0.1, 1]}
-grid_search = GridSearchCV(SVC(probability=True), param_grid, cv=5)
-grid_search.fit(X_train, y_train)
+# param_grid = {'C': [0.01, 0.1, 1], 'gamma': [0.01, 0.1, 1]}
+# grid_search = GridSearchCV(SVC(probability=True), param_grid, cv=5)
+# grid_search.fit(X_train, y_train)
 
-best_model = grid_search.best_estimator_
-score = best_model.score(X_test, y_test)
+# best_model = grid_search.best_estimator_
+# score = best_model.score(X_test, y_test)
 
-print(f'Best model accuracy: {score}')
-print(best_model)
+# print(f'Best model accuracy: {score}')
+# print(best_model)
 
-# model = SVC()
-# model.fit(X_train, y_train)
-# print(model.score(X_test, y_test))
+model = SVC()
+model.fit(X_train, y_train)
+print(model.score(X_test, y_test))
+
+model.predict(X_test)
 
 # # reduce 
 # pca = PCA(n_components=0.95)

@@ -38,10 +38,14 @@ def num_to_class(num):
     return pred        
         
 def predicition_handler(arr, pred):
-    if np.all(arr == 3):
-        pred = 'Unclassified'
-    if arr[0] == 3 and np.all(arr == 3) is False:
-        pred = num_to_class(arr[1])
+    if arr[0] == 3:
+        if np.all(arr == 3):
+            pred = 'Unclassified'
+        else:
+            for num in arr:
+                if num != 3:
+                    pred = num_to_class(num)
+                    break
     return pred
         
 class RotateDetectionwithGesture(BaseMotionRecognition):
@@ -126,20 +130,20 @@ class RotateDetectionwithGesture(BaseMotionRecognition):
                 if processed == True:
                     is_started = True
                     super().predict_motion()
-                    super().display_data(flip_color_image, self.motion_pred)
+                    # super().display_data(flip_color_image, self.motion_pred)
+                    super().display_data(flip_color_image)
                     cv2.putText(flip_color_image, str(np.round(self.motion_prob * 100)), (30, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                     cv2.putText(flip_color_image, "Direction", (350, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 0), 2)
                     cv2.putText(flip_color_image, str(np.round(self.direction, 2)), (350, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
                     
                     self.decide_pred()
-                    print("a",self.handled_pred)
-                    cv2.putText(flip_color_image, self.handled_pred, (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                    print(self.pred_array, self.handled_pred)
+                    cv2.putText(flip_color_image, self.handled_pred, (30, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
                     # print(self.motion_pred_with_array)
 
                 elif is_started and processed and self.theta_array[1, -1] <= -30:
                     self.motion_pred = 'Unclassified'
                     super().display_data(flip_color_image, self.motion_pred)
-                    
                 
                 cv2.imshow('RGB Image', flip_color_image)
 
@@ -150,9 +154,14 @@ class RotateDetectionwithGesture(BaseMotionRecognition):
                         break
                 
                 if self.stop_signal:
+                    print("----------------------------------------------------------------")
+                    print("The system has detected a motion to stop the operation.")
+                    print("Finished!")
                     break
 
                 if cv2.waitKey(5) & 0xFF == 27:
+                    print("----------------------------------------------------------------")
+                    print("The Escape key has been pressed, and the operation will stop.")
                     print("Finished!")
                     break
                 

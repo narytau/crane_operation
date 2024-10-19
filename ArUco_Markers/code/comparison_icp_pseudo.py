@@ -5,6 +5,8 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 import pyrealsense2 as rs
+from gram_schmidt import gram_schmidt
+from create_vectors import calculate_point, calculate_relative_vectors
 
 def calc_angle(vec1, vec2):
     cos_theta = np.inner(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
@@ -45,12 +47,12 @@ def arange_position_init(position):
 
 # Mapping
 def map_values(x):
-    mapping = {6: 0, 5: 1, 4: 2, 7: 3}
+    mapping = {6: 0, 5: 1, 4: 2, 7: 3, 8: 4}
     return mapping.get(x, x) 
 vectorized_map_values = np.vectorize(map_values)
 
 # Tag label that we use
-label_array = np.array([4, 5, 6, 7])
+label_array = np.array([4, 5, 6, 7, 8])
 orders = np.zeros(len(label_array)).astype(int)
 N = len(label_array)
 
@@ -64,6 +66,8 @@ relative_matrix = np.load(os.path.join(BASE_PATH, "relative_matrix.npy"))
 distance_matrix = np.load(os.path.join(BASE_PATH, "distance_matrix.npy"))
 coef_array = np.load(os.path.join(BASE_PATH, "coef_array.npy"))
 
+tvec_init = np.load(os.path.join(BASE_PATH, "tvec_array.npy"))
+
 # Setting for Detector parameters and dictionary
 detector_params = aruco.DetectorParameters()
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
@@ -76,7 +80,7 @@ objPoints = np.array([[-aruco_marker_side_length/2, aruco_marker_side_length/2, 
                     [-aruco_marker_side_length/2, -aruco_marker_side_length/2, 0]])
 
 # Target point on the wall CS
-target_point = np.array([3, 3, 0])
+target_point = np.array([3, 3, 0.5])
 
 flag_init = False
 
@@ -87,9 +91,6 @@ cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
 pipe.start(cfg)
 
 try:
-    print("Initializing...")
-    print("Ensure all markers are visible on the screen, then press the Tab key to retrieve the data.")
-    print("-------------------------------------------------------------------------------------------")
     while True:
             rvec_array = []
             tvec_array = np.zeros((N, 3))
@@ -117,22 +118,21 @@ try:
                 # Calculate R, T
                 for i in range(detected_num):
                     retval, rvec, tvec = cv2.solvePnP(objectPoints=objPoints, imagePoints=marker_corners[i], cameraMatrix=cameraMatrix, distCoeffs=distCoeffs)
-                    # cv2.drawFrameAxes(color_image, cameraMatrix=cameraMatrix, distCoeffs=distCoeffs, rvec=rvec, tvec=tvec, length=0.05)
-                    # rvec_array.append(rvec)
                     tvec_array[indices[i], :] = tvec.flatten()
                 
-                missing_index = [item for item in np.arange(N) if item not in indices]
-                remaining_index = [item for item in np.arange(N) if item not in missing_index]
+                tvec_all, tvec_partial = tvec_array, tvec_array[:N-1, :]
+                missing_index = [item for item in np.arange(N-1) if item not in indices]
+                remaining_index = [item for item in np.arange(N-1) if item not in missing_index]
+                
                 
                 if flag_init == False:
-                    key = cv2.waitKey(1) & 0xFF
-                    if detected_num == N and key == 9:
-                        position_init = arange_position_init(tvec_array)
-                        flag_init = True
-                        print("Initial position is successfully taken")
+                    position_init = arange_position_init(tvec_init)
+                    flag_init = True
+                    print("Initial position is successfully taken")
                 else:
                     if detected_num >= 3:
-                        p = tvec_array[remaining_index, :]
+                        ## ICP procedure
+                        p = tvec_partial[remaining_index, :]
                         q = position_init[remaining_index, :]
                         
                         mu_p = np.mean(p, axis=0)
@@ -144,24 +144,54 @@ try:
                         
                         U, S, Vh = np.linalg.svd(W)
 
-                        R = U @ Vh
-                        T = mu_p.reshape(3,1) - R @ mu_q.reshape(3,1)
+                        R_icp = U @ Vh
+                        T_icp = (mu_p.reshape(3,1) - R_icp @ mu_q.reshape(3,1)).flatten()
                         
-                        cv2.drawFrameAxes(color_image, cameraMatrix=cameraMatrix, distCoeffs=distCoeffs, rvec=R, tvec=T, length=0.05)
                         
-                        tvec_hole = R @ np.array([[0.1], [0.05], [-0.05]]) + T
-                        cv2.drawFrameAxes(color_image, cameraMatrix=cameraMatrix, distCoeffs=distCoeffs, rvec=R, tvec=tvec_hole, length=0.005)
+                        ## Pseudo
+                        if detected_num == 3 and len(missing_index) == 1:
+                            points = np.delete(tvec_partial, missing_index, axis=0)    
+                            base_point, remaining_point = points[0, :], points[1:, :]
+                            remaining_point = remaining_point.flatten()
+                            
+                            relative_vectors = calculate_relative_vectors(base_point, remaining_point, N-1)
+
+                            coef = coef_array[missing_index[0], :]
+                            predicted_vector = coef[0] * relative_vectors[0, :3] + coef[1] * relative_vectors[0, 3:] + base_point
+                            
+                            tvec_partial[missing_index[0], :] = predicted_vector
+                        
+                    
+                        # Define the axis
+                        x_axis = tvec_partial[1, :] - tvec_partial[0, :]
+                        y_axis = tvec_partial[2, :] - tvec_partial[0, :]
+                        orthogonal_vectors = gram_schmidt([x_axis, y_axis])
+                        x_axis, y_axis = orthogonal_vectors[0], orthogonal_vectors[1]
+                        z_axis = np.cross(x_axis, y_axis)
+                        R_pseudo = np.reshape(np.hstack((x_axis, y_axis, z_axis)), (3,3)).T
+                        T_pseudo = tvec_partial[0, :]
+                        
+                        cv2.drawFrameAxes(color_image, cameraMatrix=cameraMatrix, distCoeffs=distCoeffs, rvec=R_pseudo, tvec=T_pseudo, length=0.1)
+                        
+                        
+                        # validation
+                        answer_vec = np.array([0.0738, 0.075, 0])
+                        
+                        test_vec = tvec_all[-1, :]
+                        test_vec_icp = R_icp.T @ (test_vec - T_icp)
+                        test_vec_pseudo = R_pseudo.T @ (test_vec - T_pseudo)
+                        
+                        print("ICP", test_vec_icp)
+                        print("Pseudo", test_vec_pseudo)
+                        print("ICP/Pseudo: ", 100 * np.sum((answer_vec - test_vec_icp) ** 2) / np.sum((answer_vec - test_vec_icp) ** 2))
                         
                     else:
                         print("The data is not enough")
-                        
             # Show image
             cv2.imshow('RGB Image', color_image)
             
             # If the escape button is pressed, exit the loop
             if cv2.waitKey(5) & 0xFF == 27:
-                print("-------------------------------------------------------------------------------------------")
-                print("The Escape key has been pressed, and the operation will stop.")
                 print("Stop")
                 break
 finally:

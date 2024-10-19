@@ -8,9 +8,11 @@ from sklearn.preprocessing import StandardScaler
 
 
 # Path for model file of MediaPipe
-base_path = os.path.dirname(__file__)
-task_path = os.path.join(base_path, "recognizer", "pose_landmarker_full.task")
-model_path = os.path.join(base_path, "theta_data")
+CURRENT_PATH = os.path.dirname(__file__)
+BASE_PATH    = os.path.dirname(CURRENT_PATH)
+TASK_PATH = os.path.join(BASE_PATH, "recognizer", "pose_landmarker_full.task")
+MODEL_PATH = os.path.join(CURRENT_PATH, "theta_data")
+
 
 # Import classes of MediaPipe
 BaseOptions = mp.tasks.BaseOptions
@@ -44,17 +46,20 @@ def normalize_angle(angle):
 
 # Set for options of Gesture Recognizer
 options = PoseLandmarkerOptions(
-    base_options=BaseOptions(model_asset_path=task_path),
+    base_options=BaseOptions(model_asset_path=TASK_PATH),
     running_mode=VisionRunningMode.LIVE_STREAM,
     result_callback=print_result)
 
 right_body_index = [12, 14, 16]    # [shoulder, elbow, wrist]
 left_body_index = [11, 13, 15]
+center_body_index = [11, 12, 23, 24]
+
 horizontal_axis = [-1, 0, 0]
 
 body_position_array = np.zeros((len(right_body_index), 3, 2))
 vector_array = np.zeros((len(right_body_index),3,2))
 theta_array = np.zeros((2, len(right_body_index))) # 
+body_center_array = np.zeros((len(center_body_index), 3))
 
 array_size = 15
 theta_data = np.zeros((array_size,2,4))
@@ -66,10 +71,9 @@ theta_left = np.zeros((array_size, 2))
 iter = 0
 
 # Open the model
-with open(model_path+'model.pickle', mode='rb') as f:
+with open(os.path.join(MODEL_PATH, "model.pickle"), mode='rb') as f:
     svm_model = pickle.load(f)
-save_scaler = pickle.load(open(model_path+'scaler.sav', 'rb'))
-
+save_scaler = pickle.load(open(os.path.join(MODEL_PATH, "scaler.sav"), 'rb'))
 
 # Initial value of timestamp
 frame_timestamp_ms = 0
@@ -143,8 +147,34 @@ with PoseLandmarker.create_from_options(options) as landmarker:
             for i in range(len(left_body_index)):
                 vec = - vector_array[i, 0:2, 1]
                 angle = np.arctan2(vec[1], - vec[0])
-                theta_array[1, i] = 180 * normalize_angle(angle=angle) / np.pi
-                
+                theta_array[1, i] = 180 * normalize_angle(angle=angle) / np.pi   
+            
+                        # Array for center of the body  
+            for ind, body_ind in enumerate(center_body_index):
+                body_center_array[ind, :] = np.array([pose_landmarks[0][body_ind].x,
+                                                    pose_landmarks[0][body_ind].y,
+                                                    pose_landmarks[0][body_ind].z])
+
+            # Compensation for human tilt and camera tilt
+            vec1 = body_center_array[0,:2] - body_center_array[3,:2]
+            vec2 = body_center_array[1,:2] - body_center_array[2,:2]
+            vec = - (vec1 + vec2) / 2
+            tilt = (np.pi / 2 - np.arctan2(vec[1], vec[0])) * 180 / np.pi
+            theta_array += tilt
+            
+            # Warning when human is close to camera
+            
+            # print(np.array(body_center_array[:,:2]) > 0 , np.array(body_center_array[:,:2]) < 1) 
+            center_point = np.mean(body_center_array[:,:2], 0)
+            center_x = (1 - center_point[0]) * image_shape[1]
+            center_y = center_point[1] * image_shape[0]
+            # depth_data = depth_frame.get_distance(int(center_x), int(center_y))
+
+            # if np.mean(body_center_array[:,2]) < distance_threshold:
+            #     cv2.putText(flip_color_image, str(round(np.mean(body_center_array[:,2]), 4)), (30, 80), 
+            #                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            cv2.putText(flip_color_image, str(round(pose_world_landmarks[0][15].z, 4)), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 39, 0), 2)
+
         color_image = cv2.flip(color_image, 1)
         
         # Up-Down-Right-Left
@@ -173,7 +203,7 @@ with PoseLandmarker.create_from_options(options) as landmarker:
             
         cv2.putText(color_image, ans, (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
         
-   
+
         # Show image
         cv2.imshow('RGB Image', flip_color_image)
         

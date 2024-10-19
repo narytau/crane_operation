@@ -222,7 +222,6 @@ data_array_new += gauss_matrix
 # data_array_new = data_array_new[::2, :]
 
 
-
 data_size = int(data_array_new.shape[0]/frame_num)
 data_array_for_train = np.zeros((data_size, frame_num, feature))
 for i in range(data_size):
@@ -251,7 +250,7 @@ max_len = 1000 # max time series sequence length
 n_head = 4 # number of attention head
 n_layer = 3 # number of encoder layer
 drop_prob = 0.1
-d_model = 128 # number of dimension (for positional embedding)
+d_model = 128 # number of dimension (for positional embedding)  x256
 ffn_hidden = 512 # size of hidden layer before classification 
 feature = 6 # for univariate time series (1d), it must be adjusted for 1. 
 batch_size = 32
