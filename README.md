@@ -1,7 +1,7 @@
 ## 必要な環境
 RealSenseカメラ
 Python 3.x
-## 必要なPythonパッケージ（opencv, pyrealsense2, mediapipeなど）
+必要なPythonパッケージ（opencv, pyrealsense2, mediapipeなど）
 ## フォルダ構成
 pose_aruco_realsense_pseudo.py
 RealSenseカメラを使用して壁面に取り付けられたArUcoタグを識別し、カメラ座標系と壁座標系の関係を得るコードが含まれています。
